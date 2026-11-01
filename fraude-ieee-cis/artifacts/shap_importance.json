@@ -1,0 +1,127 @@
+[
+ {
+  "feature": "M4",
+  "label": "Variable anonymisée M4",
+  "mean_abs_shap": 0.31866952776908875
+ },
+ {
+  "feature": "C1",
+  "label": "Variable anonymisée C1",
+  "mean_abs_shap": 0.26715579628944397
+ },
+ {
+  "feature": "TransactionAmt",
+  "label": "Montant de la transaction",
+  "mean_abs_shap": 0.22818490862846375
+ },
+ {
+  "feature": "C13",
+  "label": "Variable anonymisée C13",
+  "mean_abs_shap": 0.22503244876861572
+ },
+ {
+  "feature": "card6",
+  "label": "Débit / crédit",
+  "mean_abs_shap": 0.19611448049545288
+ },
+ {
+  "feature": "card1",
+  "label": "Carte (card1)",
+  "mean_abs_shap": 0.18665756285190582
+ },
+ {
+  "feature": "C2",
+  "label": "Variable anonymisée C2",
+  "mean_abs_shap": 0.1766257882118225
+ },
+ {
+  "feature": "P_emaildomain",
+  "label": "Domaine email acheteur",
+  "mean_abs_shap": 0.17230241000652313
+ },
+ {
+  "feature": "D2",
+  "label": "Variable anonymisée D2",
+  "mean_abs_shap": 0.16986607015132904
+ },
+ {
+  "feature": "card2",
+  "label": "Carte (card2)",
+  "mean_abs_shap": 0.16464336216449738
+ },
+ {
+  "feature": "D10",
+  "label": "Variable anonymisée D10",
+  "mean_abs_shap": 0.14050830900669098
+ },
+ {
+  "feature": "C14",
+  "label": "Variable anonymisée C14",
+  "mean_abs_shap": 0.12484045326709747
+ },
+ {
+  "feature": "M6",
+  "label": "Variable anonymisée M6",
+  "mean_abs_shap": 0.12277399748563766
+ },
+ {
+  "feature": "M5",
+  "label": "Variable anonymisée M5",
+  "mean_abs_shap": 0.11777157336473465
+ },
+ {
+  "feature": "C5",
+  "label": "Variable anonymisée C5",
+  "mean_abs_shap": 0.11500434577465057
+ },
+ {
+  "feature": "D3",
+  "label": "Variable anonymisée D3",
+  "mean_abs_shap": 0.1143922358751297
+ },
+ {
+  "feature": "addr1",
+  "label": "Adresse (addr1)",
+  "mean_abs_shap": 0.10598621517419815
+ },
+ {
+  "feature": "D15",
+  "label": "Variable anonymisée D15",
+  "mean_abs_shap": 0.10546042770147324
+ },
+ {
+  "feature": "D4",
+  "label": "Variable anonymisée D4",
+  "mean_abs_shap": 0.10531533509492874
+ },
+ {
+  "feature": "V133",
+  "label": "Variable anonymisée V133",
+  "mean_abs_shap": 0.10506263375282288
+ },
+ {
+  "feature": "R_emaildomain",
+  "label": "Domaine email destinataire",
+  "mean_abs_shap": 0.09488213062286377
+ },
+ {
+  "feature": "C12",
+  "label": "Variable anonymisée C12",
+  "mean_abs_shap": 0.09295898675918579
+ },
+ {
+  "feature": "dist1",
+  "label": "Distance 1",
+  "mean_abs_shap": 0.08672496676445007
+ },
+ {
+  "feature": "C6",
+  "label": "Variable anonymisée C6",
+  "mean_abs_shap": 0.08025839179754257
+ },
+ {
+  "feature": "C11",
+  "label": "Variable anonymisée C11",
+  "mean_abs_shap": 0.07524100691080093
+ }
+]

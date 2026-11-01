@@ -1,0 +1,47 @@
+variable,categorie,n,fraud_rate
+ProductCD,W,86132,1.84019876468676
+ProductCD,H,21453,1.9997203188365262
+ProductCD,R,20830,1.2241958713394143
+ProductCD,C,18375,8.663945578231292
+ProductCD,S,3210,3.3956386292834893
+card4,visa,98438,2.555923525467807
+card4,mastercard,44896,2.971311475409836
+card4,american express,4586,1.0902747492368077
+card4,discover,2072,3.2818532818532815
+card4,(manquant),8,25.0
+card6,debit,99786,2.0323492273465216
+card6,credit,50192,3.8651577940707686
+card6,debit or credit,10,0.0
+card6,(manquant),7,28.57142857142857
+card6,charge card,5,0.0
+P_emaildomain,gmail.com,55834,3.605330085610918
+P_emaildomain,yahoo.com,23890,1.444118878191712
+P_emaildomain,(manquant),22873,2.3258864162986925
+P_emaildomain,hotmail.com,12797,4.501054934750332
+P_emaildomain,anonymous.com,11723,1.1345218800648298
+P_emaildomain,aol.com,7200,1.4027777777777777
+P_emaildomain,comcast.net,2554,0.6264682850430697
+P_emaildomain,icloud.com,1381,2.9688631426502536
+P_emaildomain,msn.com,1234,1.3776337115072934
+P_emaildomain,outlook.com,1218,7.389162561576355
+P_emaildomain,att.net,1040,0.7692307692307693
+P_emaildomain,sbcglobal.net,949,0.10537407797681769
+R_emaildomain,(manquant),95237,1.7724203828344027
+R_emaildomain,gmail.com,22214,6.077248581975331
+R_emaildomain,anonymous.com,9170,0.9596510359869139
+R_emaildomain,hotmail.com,8835,5.817770232031692
+R_emaildomain,yahoo.com,5318,2.6513726965024444
+R_emaildomain,aol.com,2109,1.1853959222380275
+R_emaildomain,comcast.net,1125,0.9777777777777777
+R_emaildomain,outlook.com,728,11.126373626373626
+R_emaildomain,icloud.com,547,4.753199268738574
+R_emaildomain,msn.com,456,0.21929824561403508
+R_emaildomain,yahoo.com.mx,445,0.44943820224719105
+R_emaildomain,verizon.net,393,0.0
+DeviceType,(manquant),90152,1.917872038335256
+DeviceType,desktop,38270,2.884766135354063
+DeviceType,mobile,21578,5.269255723422004
+M4,(manquant),84420,1.1904761904761905
+M4,M0,39706,3.530952500881479
+M4,M2,15616,8.58094262295082
+M4,M1,10258,2.1739130434782608

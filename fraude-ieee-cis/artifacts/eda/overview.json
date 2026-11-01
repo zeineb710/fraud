@@ -1,0 +1,10 @@
+{
+  "n_rows": 150000,
+  "n_fraud": 3970,
+  "fraud_rate": 2.6466666666666665,
+  "days": 34.803333333333335,
+  "mean_amt_legit": 127.89165092104363,
+  "mean_amt_fraud": 136.02101335012594,
+  "median_amt_legit": 75.0,
+  "median_amt_fraud": 76.023
+}
