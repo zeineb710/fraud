@@ -1,6 +1,5 @@
 #  Détection de fraude explicable — IEEE-CIS
 
-Projet Challenge 2 · Data Mining · ENSI. Application web **Streamlit** (6 modules) + **API FastAPI** + one-pager PDF.
 
 ## Livrables
 
@@ -8,7 +7,7 @@ Projet Challenge 2 · Data Mining · ENSI. Application web **Streamlit** (6 modu
 |---|---|
 | Application web (6 modules) | `app.py` + `pages/` — déployable sur Streamlit Community Cloud ou Hugging Face Spaces |
 | API FastAPI documentée | `api/main.py` — Swagger sur `/docs`, appelée par l'application (pages 5 et 6) |
-| Dépôt GitHub | ce dépôt (code, notebook, `requirements.txt`, README) — **ajoutez vos captures d'écran dans `docs/`** |
+| Dépôt GitHub | ce dépôt (code, notebook, `requirements.txt`, README) — 
 | One-pager PDF (1 page) | bouton de téléchargement sur la page d'accueil (`src/onepager.py`) |
 
 ## Démarrage dans GitHub Codespaces
@@ -43,7 +42,7 @@ et ajoutez le secret `API_URL` à l'application.
 ## Contenu
 
 ```
-app.py                     accueil + one-pager PDF
+app.py                     accueil 
 pages/1_Donnees.py         Module 1 · exploration
 pages/2_Preparation.py     Module 2 · split chronologique, variables, stratégie anti-déséquilibre
 pages/3_Comparaison_Modeles.py   Module 3 · choix dynamique des modèles, courbes PR / ROC / rappel@k
