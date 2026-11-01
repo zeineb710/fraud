@@ -1,71 +1,119 @@
-#  Détection de fraude explicable — IEEE-CIS
+# Détection de fraude explicable : IEEE-CIS
 
+Application web interactive qui charge les transactions, entraîne et compare plusieurs modèles de détection de fraude (supervisés et non supervisés), règle le seuil de décision selon le coût des erreurs, puis explique les scores (globalement et transaction par transaction) avec SHAP, dans un langage compréhensible par un analyste métier.
 
-## Livrables
+## Liens
 
-| Livrable | Où |
+| Livrable | Lien |
 |---|---|
-| Application web (6 modules) | `app.py` + `pages/` — déployable sur Streamlit Community Cloud ou Hugging Face Spaces |
-| API FastAPI documentée | `api/main.py` — Swagger sur `/docs`, appelée par l'application (pages 5 et 6) |
-| Dépôt GitHub | ce dépôt (code, notebook, `requirements.txt`, README) — 
-| One-pager PDF (1 page) | bouton de téléchargement sur la page d'accueil (`src/onepager.py`) |
+| Application déployée (Streamlit Community Cloud) | https://e24fw7lsqrtmw7fcmo3gkn.streamlit.app |
+| API d'interprétation (FastAPI, documentation interactive) | https://fraud-0kzn.onrender.com/docs |
+| Dépôt GitHub | https://github.com/zeineb710/fraud |
+| Jeu de données (Kaggle) | https://www.kaggle.com/competitions/ieee-fraud-detection |
 
-## Démarrage dans GitHub Codespaces
+## Problème métier
 
-1. **Kaggle** : acceptez les règles de la compétition *IEEE-CIS Fraud Detection*, puis créez une clé API (Settings > API).
-2. **Secrets Codespaces** (GitHub > Settings > Codespaces > Secrets) : `KAGGLE_USERNAME` et `KAGGLE_KEY`, associés à ce dépôt.
-3. Ouvrez le Codespace (les dépendances s'installent seules via `.devcontainer/`).
-4. Construisez le projet (téléchargement **automatique** des données + entraînement) :
-   ```bash
-   python -m src.pipeline                   # jeu complet (≈ 20-40 min selon la machine)
-   python -m src.pipeline --max-rows 150000 # version plus légère
-   python -m src.pipeline --synthetic --fast  # démo en 1 min, données FICTIVES
-   ```
-5. Lancez l'application : `streamlit run app.py` (port 8501). L'API démarre automatiquement dans le même processus ;
-   pour la lancer seule : `uvicorn api.main:app --port 8000` puis ouvrez `/docs`.
+Une banque ou un acteur du paiement en ligne veut repérer les transactions frauduleuses pour les bloquer ou les faire vérifier. Les deux erreurs n'ont pas le même coût : une fraude manquée est une perte directe, une fausse alerte dégrade l'expérience du client et mobilise des analystes. Le modèle doit donc être performant sur une classe très rare, et ses alertes doivent pouvoir être justifiées.
 
-Sans artefacts, l'application elle-même propose un bouton « Télécharger les données et construire ».
+**Données** : échantillon de 150 000 transactions du jeu IEEE-CIS, dont 2,65 % de fraudes (jeu très déséquilibré). Le coût d'analyse d'une alerte est supposé égal à 5 $.
+
+## Fonctionnalités
+
+L'application comporte six pages.
+
+1. **Données** : aperçu, statistiques descriptives, valeurs manquantes, proportion de fraudes, distribution des montants, fraude par heure et par semaine, variables catégorielles.
+2. **Préparation** : traitement des valeurs manquantes, encodage des catégories, construction de variables, séparation entraînement / test [préciser : chronologique ou aléatoire].
+3. **Comparaison des modèles** : régression logistique, Random Forest, XGBoost (supervisés), Isolation Forest, LOF, One-Class SVM et autoencodeur (détection d'anomalies), avec tableau comparatif.
+4. **Évaluation et seuil** : AUC-ROC, PR-AUC, précision, rappel et F1 sur la classe fraude, courbes ROC et précision-rappel, matrice de confusion, curseur de seuil de décision.
+5. **Explicabilité** : importance globale SHAP, explication d'une transaction, phrase de synthèse.
+6. **API** : service FastAPI documenté (Swagger), appelé par l'application.
+
+## Résultats principaux
+
+Jeu de test ([X XXX] transactions). Tableau trié par PR-AUC décroissante. Précision@600 et Rappel@600 sont calculés sur les 600 transactions les plus suspectes. L'économie est mesurée au seuil optimal de chaque modèle.
+
+| Modèle | Famille | PR-AUC | ROC-AUC | Précision@600 | Rappel@600 | Économie ($) |
+|---|---|---|---|---|---|---|
+| XGBoost | supervisé | **0,599** | **0,905** | 0,803 | 0,438 | **92 530** |
+| Random Forest | supervisé | 0,445 | 0,874 | 0,613 | 0,335 | 82 699 |
+| Régression logistique | supervisé | 0,232 | 0,820 | 0,345 | 0,188 | 64 131 |
+| Isolation Forest | non supervisé | 0,129 | 0,720 | 0,192 | 0,105 | 19 197 |
+| Autoencodeur | non supervisé | 0,092 | 0,688 | 0,163 | 0,089 | 21 540 |
+| One-Class SVM | non supervisé | 0,079 | 0,622 | 0,160 | 0,087 | 5 207 |
+| LOF | non supervisé | 0,069 | 0,652 | 0,098 | 0,054 | 65 |
+
+- **Modèle recommandé : XGBoost**. Il est premier sur toutes les métriques du tableau, avec une PR-AUC de 0,599 contre 0,445 pour le Random Forest.
+- Au seuil optimal, XGBoost économise 92 530 $ par rapport à l'absence de modèle (−60 %), avec une précision de 0,28 et un rappel de 0,71 pour 2 760 alertes.
+- Les modèles supervisés dominent nettement les modèles non supervisés. Le meilleur non supervisé, Isolation Forest, atteint une PR-AUC de 0,129, ce qui reste utile comme point de comparaison mais insuffisant seul.
+- Le classement par économie ne suit pas exactement celui de la PR-AUC : l'autoencodeur économise davantage qu'Isolation Forest malgré une PR-AUC plus faible.
+
+
+### Explications
+
+- Les variables les plus influentes (SHAP) sont [variable 1], [variable 2] et [variable 3].
+- SHAP décrit ce que le modèle utilise, pas ce qui cause la fraude.
+
+## Structure du dépôt
+
+```
+fraude-ieee-cis/
+├── app.py                # application Streamlit (page d'accueil)
+├── pages/                # pages 1 à 6 de l'application
+├── api/main.py           # API FastAPI
+├── src/                  # code métier
+│   ├── download.py       # téléchargement Kaggle
+│   ├── eda.py            # analyse exploratoire
+│   ├── features.py       # préparation et variables
+│   ├── models.py         # modèles
+│   ├── metrics.py        # métriques
+│   ├── pipeline.py       # exécution complète
+│   ├── store.py          # lecture des artefacts
+│   ├── api_client.py     # client de l'API
+│   └── ...
+├── artifacts/            # résultats du pipeline (modèles, scores, SHAP)
+├── notebooks/            # notebook d'exploration
+├── data/raw/             # données brutes (non versionnées)
+├── requirements.txt
+└── .streamlit/
+```
+
+## Installation et lancement en local
+
+```bash
+git clone https://github.com/zeineb710/fraud.git
+cd fraud/fraude-ieee-cis
+pip install -r requirements.txt
+```
+
+Télécharger les données (jeton Kaggle requis) puis lancer le pipeline :
+
+```bash
+python -m src.download
+python -m src.pipeline [options à préciser, par exemple --max-rows]
+```
+
+Lancer l'API, puis l'application, dans deux terminaux :
+
+```bash
+uvicorn api.main:app --reload
+streamlit run app.py
+```
+
+L'API est alors disponible sur `http://127.0.0.1:8000`, avec sa documentation sur `http://127.0.0.1:8000/docs`.
+
+## Notebook
+
+`notebooks/01_exploration.ipynb` présente l'exploration des données. Il s'ouvre avec Jupyter, VS Code, Colab ou GitHub Codespaces.
 
 ## Déploiement
 
-**Option A (recommandée)** : construire dans Codespaces, puis `git add artifacts/ && git commit && git push`
-(≈ 30-60 Mo, sans Git LFS). Déployez `app.py` sur Streamlit Community Cloud : aucune donnée brute ni clé Kaggle nécessaire.
-
-**Option B (téléchargement automatique au déploiement)** : dans les *Secrets* du service, définir
-`KAGGLE_USERNAME`, `KAGGLE_KEY`, `AUTO_BUILD = "true"` et `MAX_ROWS = "150000"` (mémoire limitée sur le cloud).
-Le premier lancement télécharge les données et construit les artefacts.
-
-**API publique** : l'API tourne par défaut dans l'app (non exposée). Pour une URL publique, déployez-la séparément
-(`uvicorn api.main:app --host 0.0.0.0 --port $PORT` sur Render/Hugging Face Spaces, avec `artifacts/` dans le dépôt)
-et ajoutez le secret `API_URL` à l'application.
-
-## Contenu
-
-```
-app.py                     accueil 
-pages/1_Donnees.py         Module 1 · exploration
-pages/2_Preparation.py     Module 2 · split chronologique, variables, stratégie anti-déséquilibre
-pages/3_Comparaison_Modeles.py   Module 3 · choix dynamique des modèles, courbes PR / ROC / rappel@k
-pages/4_Evaluation_Seuil.py      Module 4 · curseurs seuil + budget, coût en direct
-pages/5_Explicabilite.py   Module 5 · SHAP beeswarm, waterfall, codes motifs (via l'API)
-pages/6_API.py             Module 6 · documentation et tests de l'API
-src/                       download, features, models, metrics, pipeline, onepager
-api/main.py                FastAPI (/score, /score/batch, /transactions/..., /model/info, /health)
-```
-
-## Choix méthodologiques (à reprendre dans le rapport)
-
-- **Découpage chronologique 60/20/20** ; statistiques (sélection des V, encodage, imputation, normalisation) apprises sur le train seul.
-- **Variables comportementales sans fuite** : pour chaque transaction, seuls les achats *antérieurs* de la même identité sont comptés.
-- **Identité reconstituée** (`card1|card2|card3|card5|addr1|jour − D1`) : approximation, à présenter comme telle.
-- **Stratégie anti-déséquilibre** comparée en validation (XGBoost, plusieurs graines) ; on ne rééchantillonne que si le gain dépasse le bruit.
-  Probabilités corrigées par `p = β·ps / (β·ps − ps + 1)`.
-- **Modèles** : XGBoost, Random Forest, régression logistique ; Isolation Forest, LOF, One-Class SVM, autoencodeur
-  (LOF/OCSVM sur ACP à 20 dimensions pour la vitesse). DBSCAN n'est pas inclus : il ne sait pas scorer de nouvelles transactions.
-- **Coût** = montants des fraudes manquées + coût d'analyse × alertes ; le coût par alerte (5 $ par défaut) est une **hypothèse** : faites une analyse de sensibilité.
-- **SHAP** : valeurs exactes TreeSHAP natives de XGBoost (log-odds).
+- **Application** : Streamlit Community Cloud, fichier principal `fraude-ieee-cis/app.py`, Python 3.11. Elle lit les résultats du dossier `artifacts/`, sans données brutes ni clé Kaggle.
+- **API** : Render, dossier racine `fraude-ieee-cis`. Si l'API est en veille, le premier appel peut prendre environ une minute.
+- L'application trouve l'API grâce au secret `API_URL`.
 
 ## Limites
 
-Heuristique d'identité, variables Vesta anonymisées, étiquettes tardives, non supervisé nettement moins performant que le supervisé,
-montants supposés en dollars. Le mode `--synthetic` ne sert qu'à tester l'application.
+- Résultats obtenus sur un échantillon de 150 000 transactions (le jeu d'entraînement Kaggle en compte 590 540), avec un taux de fraude de 2,65 %.
+- L'économie dépend de l'hypothèse de 5 $ par alerte [et de : préciser comment est valorisée une fraude manquée].
+- Données très déséquilibrées et avec beaucoup de valeurs manquantes.
+- Jeu de données de compétition Kaggle, sans validation externe.
