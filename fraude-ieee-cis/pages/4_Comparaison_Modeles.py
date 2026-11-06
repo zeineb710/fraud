@@ -13,17 +13,15 @@ ui.setup("Comparaison des modèles", "⚖️")
 ui.require_artifacts()
 from src import store  # noqa: E402
 
-meta, res = store.meta(), store.results()
-sc = store.scores()
-keys = list(MD.MODELS)
-
-st.title("3 · Comparaison des modèles")
+st.title("4 · Comparaison des modèles")
+sc, meta, res = ui.active_run()
+keys = [k for k in MD.MODELS if f"score_{k}" in sc.columns]
 st.caption("Choisissez les modèles, le jeu d'évaluation et le budget d'alertes : tout se met à jour en direct.")
 
 with st.sidebar:
     st.header("Paramètres")
     split = st.radio("Jeu d'évaluation", ["validation", "test"], horizontal=True)
-    chosen = st.multiselect("Modèles à comparer", keys, default=["xgboost", "logreg", "iforest", "autoencoder"],
+    chosen = st.multiselect("Modèles à comparer", keys, default=[k for k in ["xgboost", "logreg", "iforest", "autoencoder"] if k in keys] or keys[:1],
                             format_func=MD.label)
     d = sc[sc["split"] == split]
     n = len(d)

@@ -26,6 +26,17 @@ MODELS = {
     "autoencoder": ("Autoencodeur", "non supervisé"),
 }
 
+# Réglages par défaut (valeurs utilisées par le pipeline) ; l'application permet de les modifier
+DEFAULT_PARAMS = {
+    "xgboost": {"n_estimators": 300, "max_depth": 6, "learning_rate": 0.08},
+    "random_forest": {"n_estimators": 80, "max_depth": 10, "min_samples_leaf": 100},
+    "logreg": {"C": 0.5},
+    "iforest": {"n_estimators": 100, "max_samples": 256},
+    "lof": {"n_neighbors": 20},
+    "ocsvm": {"nu": 0.02},
+    "autoencoder": {"bottleneck": 16, "max_iter": 40},
+}
+
 STRATEGIES = [
     {"name": "aucune", "kind": "none"},
     {"name": "poids des classes", "kind": "weights"},
@@ -98,41 +109,45 @@ class XGBScorer:
 # ----------------------------------------------------------------------------
 # Constructeurs
 # ----------------------------------------------------------------------------
-def build_xgb(spw=1.0, n_trees=300, seed=42):
+def build_xgb(spw=1.0, n_trees=300, seed=42, max_depth=6, learning_rate=0.08):
     return xgb.XGBClassifier(
-        n_estimators=n_trees, max_depth=6, learning_rate=0.08, subsample=0.8,
+        n_estimators=n_trees, max_depth=max_depth, learning_rate=learning_rate, subsample=0.8,
         colsample_bytree=0.7, min_child_weight=2, tree_method="hist",
         eval_metric="aucpr", scale_pos_weight=spw, random_state=seed, n_jobs=-1)
 
 
-def build_supervised(key: str, spw=1.0, cw=None, n_trees=300, seed=42):
+def build_supervised(key: str, spw=1.0, cw=None, n_trees=300, seed=42, params=None):
+    p = {**DEFAULT_PARAMS.get(key, {}), **(params or {})}
     if key == "xgboost":
-        return build_xgb(spw, n_trees, seed)
+        return build_xgb(spw, p["n_estimators"] if params else n_trees, seed, p["max_depth"], p["learning_rate"])
     if key == "logreg":
-        return Pipeline(_prep() + [("clf", LogisticRegression(max_iter=300, C=0.5, class_weight=cw))])
+        return Pipeline(_prep() + [("clf", LogisticRegression(max_iter=300, C=p["C"], class_weight=cw))])
     if key == "random_forest":
+        n_est = p["n_estimators"] if params else (80 if n_trees >= 100 else 20)
         return Pipeline([("imp", SimpleImputer(strategy="median", keep_empty_features=True)),
                          ("clf", RandomForestClassifier(
-                             n_estimators=80 if n_trees >= 100 else 20, max_depth=10,
-                             min_samples_leaf=100, max_samples=0.5, n_jobs=-1,
+                             n_estimators=n_est, max_depth=p["max_depth"],
+                             min_samples_leaf=p["min_samples_leaf"], max_samples=0.5, n_jobs=-1,
                              class_weight=cw, random_state=seed))])
     raise KeyError(key)
 
 
-def build_unsupervised(key: str, n_features: int, seed=42, fast=False):
+def build_unsupervised(key: str, n_features: int, seed=42, fast=False, params=None):
+    p = {**DEFAULT_PARAMS.get(key, {}), **(params or {})}
     nc = max(2, min(20, n_features))
     if key == "iforest":
         return Pipeline([("imp", SimpleImputer(strategy="median", keep_empty_features=True)),
-                         ("clf", IsolationForest(n_estimators=100, max_samples=256,
+                         ("clf", IsolationForest(n_estimators=p["n_estimators"], max_samples=p["max_samples"],
                                                  random_state=seed, n_jobs=-1))])
     if key == "lof":
         return Pipeline(_prep() + [("pca", PCA(nc, random_state=seed)),
-                                   ("clf", LocalOutlierFactor(n_neighbors=20, novelty=True, n_jobs=-1))])
+                                   ("clf", LocalOutlierFactor(n_neighbors=p["n_neighbors"], novelty=True, n_jobs=-1))])
     if key == "ocsvm":
         return Pipeline(_prep() + [("pca", PCA(nc, random_state=seed)),
-                                   ("clf", OneClassSVM(kernel="rbf", nu=0.02, gamma="scale"))])
+                                   ("clf", OneClassSVM(kernel="rbf", nu=p["nu"], gamma="scale"))])
     if key == "autoencoder":
-        return Pipeline(_prep() + [("clf", AEDetector(max_iter=15 if fast else 40, seed=seed))])
+        it = p["max_iter"] if params else (15 if fast else 40)
+        return Pipeline(_prep() + [("clf", AEDetector(hidden=(64, int(p["bottleneck"]), 64), max_iter=it, seed=seed))])
     raise KeyError(key)
 
 
@@ -149,7 +164,7 @@ def undersample_idx(y: np.ndarray, ratio: int, seed: int):
     return idx, m / len(neg)
 
 
-def fit_supervised(key, X: pd.DataFrame, y: np.ndarray, strategy: dict, seed=42, n_trees=300):
+def fit_supervised(key, X: pd.DataFrame, y: np.ndarray, strategy: dict, seed=42, n_trees=300, params=None):
     """Retourne (modèle, beta, nb de lignes d'entraînement).
 
     beta = part des cotes conservée par la stratégie : cote réelle = beta * cote apprise
@@ -162,7 +177,7 @@ def fit_supervised(key, X: pd.DataFrame, y: np.ndarray, strategy: dict, seed=42,
     elif strategy["kind"] == "under":
         idx, beta = undersample_idx(y, strategy["ratio"], seed)
     Xf, yf = (X, y) if idx is None else (X.iloc[idx], y[idx])
-    model = build_supervised(key, spw=spw, cw=cw, n_trees=n_trees, seed=seed)
+    model = build_supervised(key, spw=spw, cw=cw, n_trees=n_trees, seed=seed, params=params)
     model.fit(Xf, yf)
     return model, float(beta), int(len(yf))
 

@@ -70,3 +70,22 @@ def require_artifacts() -> None:
 
 def money(x: float) -> str:
     return f"{x:,.0f} $".replace(",", " ")
+
+def active_run():
+    """Scores, méta et résultats à utiliser : ceux de l'entraînement fait dans l'application, sinon la référence."""
+    run = st.session_state.get("run")
+    if run:
+        m = run["meta"]
+        c1, c2 = st.columns([5, 1], vertical_alignment="center")
+        n_txt = f"{m['n_rows']:,}".replace(",", " ")
+        c1.info(f"Vous utilisez **vos modèles** ({n_txt} transactions, {len(run['keys'])} modèle(s), "
+                f"stratégie « {m['strategy']} »).")
+        if c2.button("Voir la référence"):
+            del st.session_state["run"]
+            st.rerun()
+        return run["scores"], run["meta"], run["res"]
+    require_artifacts()
+    from src import store
+    st.caption("Résultats de référence (pipeline complet). Pour utiliser vos propres choix de préparation et de modèles, "
+               "passez par les pages Préparation et Modélisation.")
+    return store.scores(), store.meta(), store.results()

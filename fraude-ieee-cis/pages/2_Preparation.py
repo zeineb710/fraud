@@ -1,59 +1,71 @@
-import pandas as pd
-import plotly.express as px
 import streamlit as st
 
-from src import features as F
+from src import config as C
+from src import data as D
+from src import prep as P
 from src import ui
 
 ui.setup("Préparation", "🛠️")
-ui.require_artifacts()
-from src import store  # noqa: E402
+st.title("2 · Préparation des données")
 
-meta, res = store.meta(), store.results()
-st.title("2 · Préparation et variables")
+n_max = D.n_available()
+if n_max == 0:
+    st.error("Aucune donnée disponible : ni CSV dans `data/raw/`, ni échantillon dans `data/sample/`.")
+    st.code("python -m src.data --rows 40000   # à lancer là où se trouvent les CSV Kaggle, puis commit de data/sample/", language="bash")
+    st.stop()
 
-st.subheader("Découpage chronologique 60 / 20 / 20")
-sp = store.eda("split")
-st.dataframe(sp.rename(columns={"jeu": "Jeu", "lignes": "Lignes", "fraudes": "Fraudes", "taux_fraude": "Taux de fraude (%)",
-                                "jour_debut": "Jour début", "jour_fin": "Jour fin"}).round(2),
-             width="stretch", hide_index=True)
-st.caption("On apprend sur le passé et on évalue sur le futur. Toute statistique (sélection des variables V, encodage des "
-           "catégories, imputation, normalisation) est apprise sur le **train uniquement**.")
+st.caption(f"Cible : **isFraud** (classe positive : 1, très rare) · source : {D.source_label()}")
+st.info("Identifiants exclus par défaut : TransactionID. Le découpage est **chronologique** (entraînement → validation → test) : "
+        "on apprend sur le passé et on évalue sur le futur. Toutes les statistiques (médianes, codes, échelles) sont apprises "
+        "sur l'entraînement seul.")
 
-st.subheader("Variables créées")
-st.markdown("""
-| Variable | Idée | Piège évité |
-|---|---|---|
-| `hour`, `h_sin`, `h_cos`, `dow` | heure en codage cyclique (23 h proche de 1 h), jour de la semaine | – |
-| `tx_count_1h`, `tx_count_24h` | **vélocité** : nombre d'achats de la même identité sur la dernière heure / 24 h | seulement les achats **antérieurs** |
-| `amt_vs_mean_30d` | montant ÷ moyenne des achats des 30 derniers jours (écart au profil) | historique passé uniquement |
-| `time_since_prev` | secondes depuis l'achat précédent | idem |
-| `amt_log`, `amt_cents`, `email_match` | montant (log), partie décimale, emails identiques | – |
-""")
-st.warning("**Identité approximative** : IEEE-CIS n'a pas de colonne client. L'identité est reconstituée par "
-           "`card1 | card2 | card3 | card5 | addr1 | (jour − D1)`. C'est une heuristique, pas une vérité : une même personne "
-           "peut être éclatée en plusieurs identités, ou des personnes distinctes regroupées.")
+groups = st.multiselect("Groupes de variables explicatives", list(P.GROUPS), default=list(P.GROUPS))
+n_v = st.slider("Variables Vesta V conservées (les moins manquantes sur l'entraînement)", 0, 100, 40, step=5)
 
-b = store.eda("behav")
-var = st.selectbox("Taux de fraude selon une variable comportementale", b["variable"].unique(),
-                   format_func=lambda v: f"{v} · {F.label(v)}")
-d = b[b["variable"] == var]
-fig = px.bar(d, x="groupe", y="fraud_rate", hover_data=["n"], labels={"groupe": var, "fraud_rate": "Taux de fraude (%)"})
-fig.add_hline(y=meta["fraud_rate"], line_dash="dash", annotation_text="taux global")
-st.plotly_chart(fig, width="stretch")
+c1, c2, c3 = st.columns(3)
+with c1:
+    num_imp = st.selectbox("Numériques manquantes", P.NUM_IMPUTE,
+                           help="« Laisser manquant » convient à XGBoost ; les autres modèles appliquent alors une médiane de sécurité.")
+    cat_imp = st.selectbox("Catégorielles manquantes", P.CAT_IMPUTE)
+with c2:
+    enc = st.selectbox("Encodage des catégories", P.ENCODINGS,
+                       help="Ordinal : un code entier par catégorie (utilisé par le pipeline de référence). "
+                            "One-hot : une colonne par catégorie. Fréquence : part de chaque catégorie dans l'entraînement.")
+    rare = st.slider("Regrouper les catégories rares (one-hot)", 0.001, 0.10, 0.01, format="%.3f",
+                     disabled=enc != P.ENCODINGS[1])
+    scal = st.selectbox("Normalisation", P.SCALINGS, help="Inutile pour les arbres, utile pour la régression logistique et LOF.")
+with c3:
+    n_rows = st.slider("Transactions utilisées", min(5000, n_max), n_max, min(30000, n_max), step=1000 if n_max > 6000 else 100,
+                       help="Tranche chronologique : plus il y a de lignes, plus l'entraînement est long.")
+    val_f = st.slider("Part de validation", 0.10, 0.30, 0.20, 0.05, help="Sert à choisir le seuil d'alerte.")
+    test_f = st.slider("Part de test", 0.10, 0.30, 0.20, 0.05, help="Sert uniquement à confirmer.")
+    seed = st.number_input("Graine aléatoire", 0, 10_000, C.SEED)
 
-st.subheader("Stratégie contre le déséquilibre (appliquée au train seul)")
-imb = pd.DataFrame(res["imbalance"])
-show = imb.rename(columns={"strategie": "stratégie", "lignes_train": "lignes train", "pr_auc": "PR-AUC",
-                           "pr_auc_std": "± écart-type", "roc_auc": "ROC-AUC",
-                           "recall_at_k": f"rappel@{res['k_val']}", "precision_at_k": f"précision@{res['k_val']}"})
-st.dataframe(show.style.format({"PR-AUC": "{:.4f}", "± écart-type": "{:.4f}", "ROC-AUC": "{:.4f}",
-                                f"rappel@{res['k_val']}": "{:.4f}", f"précision@{res['k_val']}": "{:.4f}"})
-             .highlight_max(subset=["PR-AUC"], color="#d4edda"), width="stretch", hide_index=True)
-st.success(f"Stratégie retenue : **{res['selected_strategy']}**. Règle : on ne rééchantillonne que si le gain de PR-AUC en "
-           "validation dépasse le bruit entre tirages (le cours recommande de commencer sans rééchantillonnage).")
-st.caption("Comparaison faite avec XGBoost sur la validation, qui garde la proportion réelle de fraudes. "
-           "Après rééchantillonnage ou pondération, les probabilités sont corrigées avec "
-           "p = β·ps / (β·ps − ps + 1).")
-with st.expander("Détail par graine"):
-    st.dataframe(pd.DataFrame(res["imbalance_runs"]), width="stretch", hide_index=True)
+if st.button("Appliquer la préparation", type="primary"):
+    if not groups:
+        st.error("Choisissez au moins un groupe de variables.")
+        st.stop()
+    with st.spinner("Préparation en cours…"):
+        prepared = P.prepare(D.load(n_rows), P.PrepConfig(groups=groups, n_v=n_v, n_rows=n_rows, val_frac=val_f,
+                                                          test_frac=test_f, num_impute=num_imp, cat_impute=cat_imp,
+                                                          encoding=enc, rare=rare, scaling=scal, seed=int(seed)))
+    st.session_state["prep"] = prepared
+    st.session_state.pop("run", None)      # un nouvel entraînement est nécessaire après une nouvelle préparation
+
+p = st.session_state.get("prep")
+if p is None:
+    st.stop()
+
+r = p.report
+st.success("Préparation appliquée. Passez à la page Modélisation.")
+m = st.columns(4)
+m[0].metric("Variables d'entrée", r["n_raw_features"])
+m[1].metric("Colonnes après encodage", r["n_features"])
+m[2].metric("Manquants avant", f"{r['missing_before']:.1f} %")
+m[3].metric("Manquants après", f"{r['missing_after']:.1f} %")
+st.dataframe(r["splits"], width="stretch", hide_index=True)
+if (r["splits"]["Fraudes"] < 50).any():
+    st.warning("Moins de 50 fraudes dans un des jeux : les métriques seront très instables. Augmentez le nombre de transactions.")
+with st.expander("Aperçu des données préparées (entraînement)"):
+    st.dataframe(p.X["train"].head(10), width="stretch")
+st.page_link("pages/3_Modelisation.py", label="Aller à la modélisation →", icon="🤖")
